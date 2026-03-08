@@ -41,9 +41,46 @@
       </div>
       <div class="topbar-right">
         <span id="logged-in-user" class="user-badge"></span>
+        <button id="change-city-btn" class="btn-logout">Change City</button>
         <button id="logout-btn" class="btn-logout">Logout</button>
       </div>
     </header>
+
+    <!-- PIN + City Modal -->
+    <div id="city-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-title">Change City</div>
+
+        <!-- Step 1: PIN -->
+        <div id="pin-step">
+          <p class="modal-sub">Enter your 4-digit PIN to continue</p>
+          <div class="form-group">
+            <label for="pin-input">PIN</label>
+            <input type="password" id="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="off" />
+          </div>
+          <div id="pin-error" class="error-msg hidden">Incorrect PIN. Please try again.</div>
+          <div class="modal-actions">
+            <button id="pin-cancel-btn" class="btn-logout">Cancel</button>
+            <button id="pin-submit-btn" class="btn-login" style="width:auto;padding:10px 24px;">Next</button>
+          </div>
+          <p class="hint">Demo PIN: <strong>1234</strong></p>
+        </div>
+
+        <!-- Step 2: City -->
+        <div id="city-step" class="hidden">
+          <p class="modal-sub">Enter a city name</p>
+          <div class="form-group">
+            <label for="city-input">City</label>
+            <input type="text" id="city-input" placeholder="e.g. London, UK" autocomplete="off" />
+          </div>
+          <div id="city-error" class="error-msg hidden">Please enter a city name.</div>
+          <div class="modal-actions">
+            <button id="city-cancel-btn" class="btn-logout">Cancel</button>
+            <button id="city-submit-btn" class="btn-login" style="width:auto;padding:10px 24px;">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <main class="dashboard-main">
       <div class="summary-cards" id="summary-cards"></div>

@@ -2,6 +2,8 @@
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { admin: 'password123' };
+const CITY_PIN = '1234';
+let currentCity = 'New York, US';
 
 function getSession() {
   return sessionStorage.getItem('wdash_user');
@@ -102,6 +104,8 @@ function renderDashboard(username) {
     { label: 'Min Temp',    value: `${minTemp}°C`, sub: '10-day low',   accent: 'card-accent-green'   },
   ];
 
+  document.getElementById('location-label').textContent = currentCity;
+
   const cardsContainer = document.getElementById('summary-cards');
   cardsContainer.innerHTML = summaryCards.map(c => `
     <div class="summary-card ${c.accent}">
@@ -170,6 +174,72 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       errorEl.classList.remove('hidden');
     }
+  });
+
+  // Change City (PIN-protected)
+  const cityModal   = document.getElementById('city-modal');
+  const pinStep     = document.getElementById('pin-step');
+  const cityStep    = document.getElementById('city-step');
+  const pinInput    = document.getElementById('pin-input');
+  const cityInput   = document.getElementById('city-input');
+  const pinError    = document.getElementById('pin-error');
+  const cityError   = document.getElementById('city-error');
+
+  function openCityModal() {
+    pinStep.classList.remove('hidden');
+    cityStep.classList.add('hidden');
+    pinInput.value = '';
+    cityInput.value = '';
+    pinError.classList.add('hidden');
+    cityError.classList.add('hidden');
+    cityModal.classList.remove('hidden');
+    pinInput.focus();
+  }
+
+  function closeCityModal() {
+    cityModal.classList.add('hidden');
+  }
+
+  document.getElementById('change-city-btn').addEventListener('click', openCityModal);
+  document.getElementById('pin-cancel-btn').addEventListener('click', closeCityModal);
+  document.getElementById('city-cancel-btn').addEventListener('click', closeCityModal);
+
+  cityModal.addEventListener('click', (e) => {
+    if (e.target === cityModal) closeCityModal();
+  });
+
+  document.getElementById('pin-submit-btn').addEventListener('click', () => {
+    if (pinInput.value === CITY_PIN) {
+      pinError.classList.add('hidden');
+      pinStep.classList.add('hidden');
+      cityStep.classList.remove('hidden');
+      cityInput.focus();
+    } else {
+      pinError.classList.remove('hidden');
+      pinInput.value = '';
+      pinInput.focus();
+    }
+  });
+
+  pinInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('pin-submit-btn').click();
+  });
+
+  document.getElementById('city-submit-btn').addEventListener('click', () => {
+    const val = cityInput.value.trim();
+    if (!val) {
+      cityError.classList.remove('hidden');
+      cityInput.focus();
+      return;
+    }
+    currentCity = val;
+    const user = getSession();
+    renderDashboard(user);
+    closeCityModal();
+  });
+
+  cityInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('city-submit-btn').click();
   });
 
   // Logout
