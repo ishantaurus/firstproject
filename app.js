@@ -2,8 +2,8 @@
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { admin: 'password123' };
-const CITY_PIN = '1234';
-let currentCity = 'New York, US';
+let currentZip = '10001';
+let currentCity = 'ZIP: 10001';
 
 function getSession() {
   return sessionStorage.getItem('wdash_user');
@@ -36,16 +36,23 @@ function seededRand(seed) {
   };
 }
 
+function zipToNumber(zip) {
+  let n = 0;
+  for (let i = 0; i < zip.length; i++) n = n * 31 + zip.charCodeAt(i);
+  return Math.abs(n);
+}
+
 function generateWeatherData() {
   const today = new Date();
   const data = [];
+  const zipOffset = zipToNumber(currentZip);
 
   for (let i = 9; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
 
-    // Use date as seed so data is stable on refresh
-    const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+    // Combine date + zip so data changes per zip
+    const seed = (date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate()) + zipOffset;
     const rand = seededRand(seed);
 
     const condIdx  = Math.floor(rand() * CONDITIONS.length);
@@ -176,70 +183,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Change City (PIN-protected)
-  const cityModal   = document.getElementById('city-modal');
-  const pinStep     = document.getElementById('pin-step');
-  const cityStep    = document.getElementById('city-step');
-  const pinInput    = document.getElementById('pin-input');
-  const cityInput   = document.getElementById('city-input');
-  const pinError    = document.getElementById('pin-error');
-  const cityError   = document.getElementById('city-error');
-
-  function openCityModal() {
-    pinStep.classList.remove('hidden');
-    cityStep.classList.add('hidden');
-    pinInput.value = '';
-    cityInput.value = '';
-    pinError.classList.add('hidden');
-    cityError.classList.add('hidden');
-    cityModal.classList.remove('hidden');
-    pinInput.focus();
+  // Zip code change
+  function applyZip() {
+    const val = document.getElementById('zip-input').value.trim();
+    if (!val) return;
+    currentZip = val;
+    currentCity = 'ZIP: ' + val;
+    renderDashboard(getSession());
   }
 
-  function closeCityModal() {
-    cityModal.classList.add('hidden');
-  }
-
-  document.getElementById('change-city-btn').addEventListener('click', openCityModal);
-  document.getElementById('pin-cancel-btn').addEventListener('click', closeCityModal);
-  document.getElementById('city-cancel-btn').addEventListener('click', closeCityModal);
-
-  cityModal.addEventListener('click', (e) => {
-    if (e.target === cityModal) closeCityModal();
-  });
-
-  document.getElementById('pin-submit-btn').addEventListener('click', () => {
-    if (pinInput.value === CITY_PIN) {
-      pinError.classList.add('hidden');
-      pinStep.classList.add('hidden');
-      cityStep.classList.remove('hidden');
-      cityInput.focus();
-    } else {
-      pinError.classList.remove('hidden');
-      pinInput.value = '';
-      pinInput.focus();
-    }
-  });
-
-  pinInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('pin-submit-btn').click();
-  });
-
-  document.getElementById('city-submit-btn').addEventListener('click', () => {
-    const val = cityInput.value.trim();
-    if (!val) {
-      cityError.classList.remove('hidden');
-      cityInput.focus();
-      return;
-    }
-    currentCity = val;
-    const user = getSession();
-    renderDashboard(user);
-    closeCityModal();
-  });
-
-  cityInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('city-submit-btn').click();
+  document.getElementById('zip-submit-btn').addEventListener('click', applyZip);
+  document.getElementById('zip-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') applyZip();
   });
 
   // Logout
