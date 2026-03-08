@@ -2,105 +2,125 @@
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { admin: 'password123' };
-let currentZip = '10001';
-let currentCity = 'ZIP: 10001';
+let currentZip  = '10001';
+let currentCity = 'New York City, NY';
 
-function getSession() {
-  return sessionStorage.getItem('wdash_user');
+function getSession()      { return sessionStorage.getItem('wdash_user'); }
+function setSession(user)  { sessionStorage.setItem('wdash_user', user); }
+function clearSession()    { sessionStorage.removeItem('wdash_user'); }
+
+// ─── Conditions (mapped from WMO weather codes) ───────────────────────────────
+const CONDITIONS = {
+  sunny:  { label: 'Sunny',   icon: '☀️',  cls: 'badge-sunny'  },
+  cloudy: { label: 'Cloudy',  icon: '☁️',  cls: 'badge-cloudy' },
+  rainy:  { label: 'Rainy',   icon: '🌧️', cls: 'badge-rainy'  },
+  stormy: { label: 'Stormy',  icon: '⛈️', cls: 'badge-stormy' },
+  windy:  { label: 'Windy',   icon: '🌬️', cls: 'badge-windy'  },
+  foggy:  { label: 'Foggy',   icon: '🌫️', cls: 'badge-foggy'  },
+  snowy:  { label: 'Snowy',   icon: '❄️',  cls: 'badge-snowy'  },
+};
+
+// WMO Weather Interpretation Codes → condition
+function wmoToCondition(code, windMph) {
+  if (code === 0)                                          return CONDITIONS.sunny;
+  if (code <= 3)                                           return windMph > 35 ? CONDITIONS.windy : CONDITIONS.cloudy;
+  if (code === 45 || code === 48)                          return CONDITIONS.foggy;
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return CONDITIONS.rainy;
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return CONDITIONS.snowy;
+  if (code >= 95)                                          return CONDITIONS.stormy;
+  return CONDITIONS.cloudy;
 }
 
-function setSession(user) {
-  sessionStorage.setItem('wdash_user', user);
-}
+// ─── Real weather API (Open-Meteo + Zippopotam.us) ───────────────────────────
+async function fetchWeatherByZip(zip) {
+  // 1. Zip → lat/lon + city name  (Zippopotam.us, same geocoding Apple uses for US zips)
+  const geoRes = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
+  if (!geoRes.ok) throw new Error(`ZIP code "${zip}" not found. Please enter a valid US zip.`);
+  const geoData = await geoRes.json();
+  const place   = geoData.places[0];
+  const lat     = parseFloat(place.latitude);
+  const lon     = parseFloat(place.longitude);
+  const city    = `${place['place name']}, ${place['state abbreviation']}`;
 
-function clearSession() {
-  sessionStorage.removeItem('wdash_user');
-}
+  // 2. Weather from Open-Meteo (uses ECMWF/GFS models — same source as Apple WeatherKit)
+  const params = new URLSearchParams({
+    latitude:        lat,
+    longitude:       lon,
+    current_weather: true,
+    daily: [
+      'weathercode',
+      'temperature_2m_max',
+      'temperature_2m_min',
+      'precipitation_probability_max',
+      'windspeed_10m_max',
+      'apparent_temperature_max',
+    ].join(','),
+    wind_speed_unit: 'mph',
+    timezone:        'auto',
+    forecast_days:   10,
+  });
 
-// ─── Weather data (today + next 9 days) ──────────────────────────────────────
-const CONDITIONS = [
-  { label: 'Sunny',   icon: '☀️',  cls: 'badge-sunny'  },
-  { label: 'Cloudy',  icon: '☁️',  cls: 'badge-cloudy' },
-  { label: 'Rainy',   icon: '🌧️', cls: 'badge-rainy'  },
-  { label: 'Stormy',  icon: '⛈️', cls: 'badge-stormy' },
-  { label: 'Windy',   icon: '🌬️', cls: 'badge-windy'  },
-  { label: 'Foggy',   icon: '🌫️', cls: 'badge-foggy'  },
-];
+  const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+  if (!wxRes.ok) throw new Error('Weather service unavailable. Please try again.');
+  const wx = await wxRes.json();
 
-function seededRand(seed) {
-  // Simple deterministic pseudo-random from seed
-  let s = seed;
-  return function () {
-    s = (s * 16807 + 0) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
+  const current = wx.current_weather;
+  const daily   = wx.daily;
 
-function zipToNumber(zip) {
-  let n = 0;
-  for (let i = 0; i < zip.length; i++) n = n * 31 + zip.charCodeAt(i);
-  return Math.abs(n);
-}
+  const data = daily.time.map((dateStr, i) => {
+    const wind = Math.round(daily.windspeed_10m_max[i]);
+    return {
+      date:      new Date(dateStr + 'T12:00:00'),
+      condition: wmoToCondition(daily.weathercode[i], wind),
+      high:      Math.round(daily.temperature_2m_max[i]),
+      low:       Math.round(daily.temperature_2m_min[i]),
+      feelsLike: Math.round(daily.apparent_temperature_max[i]),
+      precip:    daily.precipitation_probability_max[i] ?? 0,
+      wind,
+      current:   i === 0 ? Math.round(current.temperature) : null,
+    };
+  });
 
-function generateWeatherData() {
-  const today = new Date();
-  const data = [];
-  const zipOffset = zipToNumber(currentZip);
-
-  // today (i=0) through next 9 days (i=9)
-  for (let i = 0; i <= 9; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-
-    const seed = (date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate()) + zipOffset;
-    const rand = seededRand(seed);
-
-    const condIdx  = Math.floor(rand() * CONDITIONS.length);
-    const high     = Math.round(15 + rand() * 20);         // 15–35 °C
-    const low      = Math.round(high - 4 - rand() * 10);  // low < high
-    const humidity = Math.round(40 + rand() * 55);         // 40–95 %
-    const wind     = Math.round(3  + rand() * 37);         // 3–40 mph
-    // current temp: midpoint shifted toward high for daytime feel
-    const current  = (i === 0) ? Math.round((high + low) / 2 + rand() * 3) : null;
-
-    data.push({ date, condition: CONDITIONS[condIdx], high, low, humidity, wind, current });
-  }
-
-  return data;
+  return { data, city };
 }
 
 // ─── Special weather alerts ───────────────────────────────────────────────────
 function generateAlerts(data) {
   const alerts = [];
-  const today = data[0];
-  const stormyDays  = data.filter(d => d.condition.label === 'Stormy').length;
-  const rainyDays   = data.filter(d => d.condition.label === 'Rainy').length;
-  const sunnyDays   = data.filter(d => d.condition.label === 'Sunny').length;
+  const today      = data[0];
+  const stormyDays = data.filter(d => d.condition.label === 'Stormy').length;
+  const rainyDays  = data.filter(d => d.condition.label === 'Rainy').length;
+  const snowyDays  = data.filter(d => d.condition.label === 'Snowy').length;
+  const sunnyDays  = data.filter(d => d.condition.label === 'Sunny').length;
 
   if (today.condition.label === 'Stormy')
-    alerts.push({ icon: '⚠️', cls: 'alert-warn',  text: 'Severe Thunderstorm Warning – Expect heavy rain and lightning today. Stay indoors if possible.' });
+    alerts.push({ icon: '⚠️', cls: 'alert-warn', text: 'Severe Thunderstorm Warning – Expect heavy rain and lightning today. Stay indoors if possible.' });
   if (today.condition.label === 'Foggy')
-    alerts.push({ icon: '🌫️', cls: 'alert-info',  text: 'Dense Fog Advisory – Reduced visibility on roads. Drive slowly and use low-beam headlights.' });
+    alerts.push({ icon: '🌫️', cls: 'alert-info', text: 'Dense Fog Advisory – Reduced visibility on roads. Use low-beam headlights and drive slowly.' });
   if (today.condition.label === 'Rainy')
-    alerts.push({ icon: '🌧️', cls: 'alert-info',  text: 'Rain Advisory – Carry an umbrella. Slippery surfaces expected.' });
+    alerts.push({ icon: '🌧️', cls: 'alert-info', text: 'Rain Advisory – Carry an umbrella. Slippery surfaces expected.' });
+  if (today.condition.label === 'Snowy')
+    alerts.push({ icon: '❄️', cls: 'alert-info', text: 'Winter Weather Advisory – Snow expected today. Allow extra travel time and use caution on roads.' });
   if (today.wind > 25)
-    alerts.push({ icon: '💨', cls: 'alert-warn',  text: `High Wind Advisory – Gusts up to ${today.wind} mph today. Secure loose outdoor items.` });
-  if (today.humidity > 85)
-    alerts.push({ icon: '💧', cls: 'alert-info',  text: `High Humidity Alert – ${today.humidity}% humidity. Feels significantly hotter than actual temperature.` });
+    alerts.push({ icon: '💨', cls: 'alert-warn', text: `High Wind Advisory – Winds up to ${today.wind} mph today. Secure loose outdoor items.` });
+  if (today.precip > 80)
+    alerts.push({ icon: '💧', cls: 'alert-info', text: `High Precipitation Chance – ${today.precip}% chance of rain today. Plan accordingly.` });
   if (today.condition.label === 'Sunny' && today.high >= 30)
-    alerts.push({ icon: '🌡️', cls: 'alert-warn',  text: `Heat Advisory – High of ${today.high}°C today. Stay hydrated and limit prolonged sun exposure.` });
+    alerts.push({ icon: '🌡️', cls: 'alert-warn', text: `Heat Advisory – High of ${today.high}°C today. Stay hydrated and limit sun exposure.` });
   if (stormyDays >= 3)
-    alerts.push({ icon: '⛈️', cls: 'alert-warn',  text: `Unsettled Week Ahead – ${stormyDays} storm days forecast. Keep an eye on local emergency alerts.` });
+    alerts.push({ icon: '⛈️', cls: 'alert-warn', text: `Unsettled Week Ahead – ${stormyDays} storm days in the 10-day forecast. Monitor local alerts.` });
   if (rainyDays >= 4)
-    alerts.push({ icon: '🌊', cls: 'alert-warn',  text: `Flood Watch – ${rainyDays} days of rain in the forecast. Low-lying areas may experience flooding.` });
+    alerts.push({ icon: '🌊', cls: 'alert-warn', text: `Flood Watch – ${rainyDays} rainy days forecast. Low-lying areas may experience flooding.` });
+  if (snowyDays >= 3)
+    alerts.push({ icon: '🌨️', cls: 'alert-info', text: `Extended Winter Conditions – ${snowyDays} snowy days ahead. Keep roads and walkways clear.` });
   if (sunnyDays >= 7)
-    alerts.push({ icon: '☀️', cls: 'alert-good',  text: `Extended Clear Skies – ${sunnyDays} sunny days ahead. Great week for outdoor activities.` });
+    alerts.push({ icon: '☀️', cls: 'alert-good', text: `Extended Clear Skies – ${sunnyDays} sunny days ahead. Great week for outdoor activities.` });
 
   return alerts;
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
-const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function formatDate(d) {
@@ -115,12 +135,42 @@ function formatDay(d) {
   return DAY_NAMES[d.getDay()];
 }
 
-// ─── Render dashboard ─────────────────────────────────────────────────────────
-function renderDashboard(username) {
-  document.getElementById('logged-in-user').textContent = username;
+function showLoadingState() {
+  document.getElementById('current-weather').innerHTML = `
+    <div class="current-weather-card loading-card">
+      <div class="loading-spinner"></div>
+      <span class="loading-text">Fetching live weather data…</span>
+    </div>
+  `;
+  document.getElementById('summary-cards').innerHTML = '';
+  document.getElementById('weather-alerts').innerHTML = '';
+  document.getElementById('weather-tbody').innerHTML = '';
+}
 
-  const weatherData = generateWeatherData();
-  const todayData   = weatherData[0];
+function showErrorState(msg) {
+  document.getElementById('current-weather').innerHTML = `
+    <div class="current-weather-card error-card">
+      <span class="error-icon">⚠️</span>
+      <span class="error-text">${msg}</span>
+    </div>
+  `;
+}
+
+// ─── Render dashboard ─────────────────────────────────────────────────────────
+async function renderDashboard(username) {
+  document.getElementById('logged-in-user').textContent = username;
+  showLoadingState();
+
+  let weatherData, city;
+  try {
+    ({ data: weatherData, city } = await fetchWeatherByZip(currentZip));
+    currentCity = city;
+  } catch (err) {
+    showErrorState(err.message);
+    return;
+  }
+
+  const todayData = weatherData[0];
 
   // ── Current temperature hero ──
   document.getElementById('current-weather').innerHTML = `
@@ -136,7 +186,7 @@ function renderDashboard(username) {
       <div class="cw-right">
         <div class="cw-detail"><span class="cw-detail-label">High</span><span class="temp-high">${todayData.high}°C</span></div>
         <div class="cw-detail"><span class="cw-detail-label">Low</span><span class="temp-low">${todayData.low}°C</span></div>
-        <div class="cw-detail"><span class="cw-detail-label">Humidity</span><span>${todayData.humidity}%</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Feels Like</span><span>${todayData.feelsLike}°C</span></div>
         <div class="cw-detail"><span class="cw-detail-label">Wind</span><span>${todayData.wind} mph</span></div>
       </div>
     </div>
@@ -150,16 +200,14 @@ function renderDashboard(username) {
   const maxTemp = Math.max(...highs);
   const minTemp = Math.min(...lows);
 
-  const summaryCards = [
+  document.getElementById('location-label').textContent = currentCity;
+
+  document.getElementById('summary-cards').innerHTML = [
     { label: 'Avg High',  value: `${avgHigh}°C`, sub: 'Next 10 days', accent: 'card-accent-red'    },
     { label: 'Avg Low',   value: `${avgLow}°C`,  sub: 'Next 10 days', accent: 'card-accent-blue'   },
     { label: 'Peak Temp', value: `${maxTemp}°C`, sub: '10-day high',  accent: 'card-accent-purple'  },
     { label: 'Min Temp',  value: `${minTemp}°C`, sub: '10-day low',   accent: 'card-accent-green'   },
-  ];
-
-  document.getElementById('location-label').textContent = currentCity;
-
-  document.getElementById('summary-cards').innerHTML = summaryCards.map(c => `
+  ].map(c => `
     <div class="summary-card ${c.accent}">
       <div class="card-label">${c.label}</div>
       <div class="card-value">${c.value}</div>
@@ -168,36 +216,27 @@ function renderDashboard(username) {
   `).join('');
 
   // ── Weather alerts ──
-  const alerts = generateAlerts(weatherData);
+  const alerts   = generateAlerts(weatherData);
   const alertsEl = document.getElementById('weather-alerts');
-  if (alerts.length) {
-    alertsEl.innerHTML = `
-      <div class="alerts-section">
-        <div class="alerts-title">Special Weather Statements</div>
-        ${alerts.map(a => `
-          <div class="alert-item ${a.cls}">
-            <span class="alert-icon">${a.icon}</span>
-            <span class="alert-text">${a.text}</span>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  } else {
-    alertsEl.innerHTML = `
-      <div class="alerts-section">
-        <div class="alerts-title">Special Weather Statements</div>
-        <div class="alert-item alert-good">
-          <span class="alert-icon">✅</span>
-          <span class="alert-text">No active weather statements for this area. Conditions look normal.</span>
-        </div>
-      </div>
-    `;
-  }
+  const alertRows = alerts.length
+    ? alerts.map(a => `
+        <div class="alert-item ${a.cls}">
+          <span class="alert-icon">${a.icon}</span>
+          <span class="alert-text">${a.text}</span>
+        </div>`).join('')
+    : `<div class="alert-item alert-good">
+         <span class="alert-icon">✅</span>
+         <span class="alert-text">No active weather statements. Conditions look normal for this area.</span>
+       </div>`;
+  alertsEl.innerHTML = `
+    <div class="alerts-section">
+      <div class="alerts-title">Special Weather Statements</div>
+      ${alertRows}
+    </div>`;
 
   // ── Table rows ──
-  const tbody = document.getElementById('weather-tbody');
-  tbody.innerHTML = weatherData.map(d => {
-    const barWidth = Math.round((d.humidity / 100) * 80);
+  document.getElementById('weather-tbody').innerHTML = weatherData.map(d => {
+    const barWidth = Math.round((d.precip / 100) * 80);
     return `
       <tr>
         <td class="date-col">${formatDate(d.date)}</td>
@@ -212,12 +251,11 @@ function renderDashboard(username) {
         <td>
           <div class="humidity-bar-wrap">
             <div class="humidity-bar" style="width:${barWidth}px"></div>
-            <span class="humidity-val">${d.humidity}%</span>
+            <span class="humidity-val">${d.precip}%</span>
           </div>
         </td>
         <td>${d.wind} mph</td>
-      </tr>
-    `;
+      </tr>`;
   }).join('');
 }
 
@@ -229,38 +267,35 @@ function showPage(pageId) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Restore session
   const user = getSession();
   if (user) {
-    renderDashboard(user);
     showPage('dashboard-page');
+    renderDashboard(user);
   } else {
     showPage('login-page');
   }
 
-  // Login form
+  // Login
   document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const errorEl  = document.getElementById('login-error');
-
     if (CREDENTIALS[username] && CREDENTIALS[username] === password) {
       errorEl.classList.add('hidden');
       setSession(username);
-      renderDashboard(username);
       showPage('dashboard-page');
+      renderDashboard(username);
     } else {
       errorEl.classList.remove('hidden');
     }
   });
 
-  // Zip code change
-  function applyZip() {
+  // Zip code
+  async function applyZip() {
     const val = document.getElementById('zip-input').value.trim();
     if (!val) return;
     currentZip = val;
-    currentCity = 'ZIP: ' + val;
     renderDashboard(getSession());
   }
 
