@@ -17,7 +17,7 @@ function clearSession() {
   sessionStorage.removeItem('wdash_user');
 }
 
-// ─── Weather data (last 10 days relative to today) ───────────────────────────
+// ─── Weather data (today + next 9 days) ──────────────────────────────────────
 const CONDITIONS = [
   { label: 'Sunny',   icon: '☀️',  cls: 'badge-sunny'  },
   { label: 'Cloudy',  icon: '☁️',  cls: 'badge-cloudy' },
@@ -47,31 +47,56 @@ function generateWeatherData() {
   const data = [];
   const zipOffset = zipToNumber(currentZip);
 
-  for (let i = 9; i >= 0; i--) {
+  // today (i=0) through next 9 days (i=9)
+  for (let i = 0; i <= 9; i++) {
     const date = new Date(today);
-    date.setDate(today.getDate() - i);
+    date.setDate(today.getDate() + i);
 
-    // Combine date + zip so data changes per zip
     const seed = (date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate()) + zipOffset;
     const rand = seededRand(seed);
 
     const condIdx  = Math.floor(rand() * CONDITIONS.length);
-    const high     = Math.round(15 + rand() * 20);          // 15–35 °C
-    const low      = Math.round(high - 4 - rand() * 10);   // low < high
-    const humidity = Math.round(40 + rand() * 55);          // 40–95 %
-    const wind     = Math.round(5  + rand() * 45);          // 5–50 km/h
+    const high     = Math.round(15 + rand() * 20);         // 15–35 °C
+    const low      = Math.round(high - 4 - rand() * 10);  // low < high
+    const humidity = Math.round(40 + rand() * 55);         // 40–95 %
+    const wind     = Math.round(3  + rand() * 37);         // 3–40 mph
+    // current temp: midpoint shifted toward high for daytime feel
+    const current  = (i === 0) ? Math.round((high + low) / 2 + rand() * 3) : null;
 
-    data.push({
-      date,
-      condition: CONDITIONS[condIdx],
-      high,
-      low,
-      humidity,
-      wind,
-    });
+    data.push({ date, condition: CONDITIONS[condIdx], high, low, humidity, wind, current });
   }
 
   return data;
+}
+
+// ─── Special weather alerts ───────────────────────────────────────────────────
+function generateAlerts(data) {
+  const alerts = [];
+  const today = data[0];
+  const stormyDays  = data.filter(d => d.condition.label === 'Stormy').length;
+  const rainyDays   = data.filter(d => d.condition.label === 'Rainy').length;
+  const sunnyDays   = data.filter(d => d.condition.label === 'Sunny').length;
+
+  if (today.condition.label === 'Stormy')
+    alerts.push({ icon: '⚠️', cls: 'alert-warn',  text: 'Severe Thunderstorm Warning – Expect heavy rain and lightning today. Stay indoors if possible.' });
+  if (today.condition.label === 'Foggy')
+    alerts.push({ icon: '🌫️', cls: 'alert-info',  text: 'Dense Fog Advisory – Reduced visibility on roads. Drive slowly and use low-beam headlights.' });
+  if (today.condition.label === 'Rainy')
+    alerts.push({ icon: '🌧️', cls: 'alert-info',  text: 'Rain Advisory – Carry an umbrella. Slippery surfaces expected.' });
+  if (today.wind > 25)
+    alerts.push({ icon: '💨', cls: 'alert-warn',  text: `High Wind Advisory – Gusts up to ${today.wind} mph today. Secure loose outdoor items.` });
+  if (today.humidity > 85)
+    alerts.push({ icon: '💧', cls: 'alert-info',  text: `High Humidity Alert – ${today.humidity}% humidity. Feels significantly hotter than actual temperature.` });
+  if (today.condition.label === 'Sunny' && today.high >= 30)
+    alerts.push({ icon: '🌡️', cls: 'alert-warn',  text: `Heat Advisory – High of ${today.high}°C today. Stay hydrated and limit prolonged sun exposure.` });
+  if (stormyDays >= 3)
+    alerts.push({ icon: '⛈️', cls: 'alert-warn',  text: `Unsettled Week Ahead – ${stormyDays} storm days forecast. Keep an eye on local emergency alerts.` });
+  if (rainyDays >= 4)
+    alerts.push({ icon: '🌊', cls: 'alert-warn',  text: `Flood Watch – ${rainyDays} days of rain in the forecast. Low-lying areas may experience flooding.` });
+  if (sunnyDays >= 7)
+    alerts.push({ icon: '☀️', cls: 'alert-good',  text: `Extended Clear Skies – ${sunnyDays} sunny days ahead. Great week for outdoor activities.` });
+
+  return alerts;
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
@@ -85,8 +110,8 @@ function formatDate(d) {
 function formatDay(d) {
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return 'Today';
-  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
   return DAY_NAMES[d.getDay()];
 }
 
@@ -95,8 +120,29 @@ function renderDashboard(username) {
   document.getElementById('logged-in-user').textContent = username;
 
   const weatherData = generateWeatherData();
+  const todayData   = weatherData[0];
 
-  // Summary cards
+  // ── Current temperature hero ──
+  document.getElementById('current-weather').innerHTML = `
+    <div class="current-weather-card">
+      <div class="cw-left">
+        <div class="cw-icon">${todayData.condition.icon}</div>
+        <div class="cw-info">
+          <div class="cw-temp">${todayData.current}°C</div>
+          <div class="cw-condition">${todayData.condition.label}</div>
+          <div class="cw-location">${currentCity}</div>
+        </div>
+      </div>
+      <div class="cw-right">
+        <div class="cw-detail"><span class="cw-detail-label">High</span><span class="temp-high">${todayData.high}°C</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Low</span><span class="temp-low">${todayData.low}°C</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Humidity</span><span>${todayData.humidity}%</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Wind</span><span>${todayData.wind} mph</span></div>
+      </div>
+    </div>
+  `;
+
+  // ── Summary cards ──
   const highs   = weatherData.map(d => d.high);
   const lows    = weatherData.map(d => d.low);
   const avgHigh = Math.round(highs.reduce((a, b) => a + b, 0) / highs.length);
@@ -105,16 +151,15 @@ function renderDashboard(username) {
   const minTemp = Math.min(...lows);
 
   const summaryCards = [
-    { label: 'Avg High',    value: `${avgHigh}°C`, sub: 'Last 10 days', accent: 'card-accent-red'    },
-    { label: 'Avg Low',     value: `${avgLow}°C`,  sub: 'Last 10 days', accent: 'card-accent-blue'   },
-    { label: 'Peak Temp',   value: `${maxTemp}°C`, sub: '10-day high',  accent: 'card-accent-purple'  },
-    { label: 'Min Temp',    value: `${minTemp}°C`, sub: '10-day low',   accent: 'card-accent-green'   },
+    { label: 'Avg High',  value: `${avgHigh}°C`, sub: 'Next 10 days', accent: 'card-accent-red'    },
+    { label: 'Avg Low',   value: `${avgLow}°C`,  sub: 'Next 10 days', accent: 'card-accent-blue'   },
+    { label: 'Peak Temp', value: `${maxTemp}°C`, sub: '10-day high',  accent: 'card-accent-purple'  },
+    { label: 'Min Temp',  value: `${minTemp}°C`, sub: '10-day low',   accent: 'card-accent-green'   },
   ];
 
   document.getElementById('location-label').textContent = currentCity;
 
-  const cardsContainer = document.getElementById('summary-cards');
-  cardsContainer.innerHTML = summaryCards.map(c => `
+  document.getElementById('summary-cards').innerHTML = summaryCards.map(c => `
     <div class="summary-card ${c.accent}">
       <div class="card-label">${c.label}</div>
       <div class="card-value">${c.value}</div>
@@ -122,7 +167,34 @@ function renderDashboard(username) {
     </div>
   `).join('');
 
-  // Table rows
+  // ── Weather alerts ──
+  const alerts = generateAlerts(weatherData);
+  const alertsEl = document.getElementById('weather-alerts');
+  if (alerts.length) {
+    alertsEl.innerHTML = `
+      <div class="alerts-section">
+        <div class="alerts-title">Special Weather Statements</div>
+        ${alerts.map(a => `
+          <div class="alert-item ${a.cls}">
+            <span class="alert-icon">${a.icon}</span>
+            <span class="alert-text">${a.text}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    alertsEl.innerHTML = `
+      <div class="alerts-section">
+        <div class="alerts-title">Special Weather Statements</div>
+        <div class="alert-item alert-good">
+          <span class="alert-icon">✅</span>
+          <span class="alert-text">No active weather statements for this area. Conditions look normal.</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Table rows ──
   const tbody = document.getElementById('weather-tbody');
   tbody.innerHTML = weatherData.map(d => {
     const barWidth = Math.round((d.humidity / 100) * 80);
@@ -143,7 +215,7 @@ function renderDashboard(username) {
             <span class="humidity-val">${d.humidity}%</span>
           </div>
         </td>
-        <td>${d.wind} km/h</td>
+        <td>${d.wind} mph</td>
       </tr>
     `;
   }).join('');

@@ -50,12 +50,19 @@
     </header>
 
     <main class="dashboard-main">
+      <!-- Current Temperature -->
+      <div id="current-weather"></div>
+
+      <!-- Summary Cards -->
       <div class="summary-cards" id="summary-cards"></div>
+
+      <!-- Special Weather Statements -->
+      <div id="weather-alerts"></div>
 
       <div class="table-section">
         <div class="table-header">
-          <h2>Last 10 Days Weather</h2>
-          <span id="location-label" class="location-tag">New York, US</span>
+          <h2>10-Day Forecast</h2>
+          <span id="location-label" class="location-tag">ZIP: 10001</span>
         </div>
         <div class="table-wrapper">
           <table id="weather-table">
@@ -67,7 +74,7 @@
                 <th>High (°C)</th>
                 <th>Low (°C)</th>
                 <th>Humidity</th>
-                <th>Wind (km/h)</th>
+                <th>Wind (mph)</th>
               </tr>
             </thead>
             <tbody id="weather-tbody"></tbody>

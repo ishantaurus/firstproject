@@ -356,6 +356,128 @@ body {
   min-width: 30px;
 }
 
+/* ───────── Current Weather Hero ───────── */
+.current-weather-card {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 60%, #2d1b4e 100%);
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.cw-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cw-icon {
+  font-size: 72px;
+  line-height: 1;
+}
+
+.cw-temp {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.cw-condition {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.cw-location {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.cw-right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 28px;
+}
+
+.cw-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cw-detail-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.cw-detail span:last-child {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+/* ───────── Weather Alerts ───────── */
+.alerts-section {
+  margin-bottom: 24px;
+}
+
+.alerts-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+}
+
+.alert-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert-text {
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.alert-warn {
+  background: rgba(251,146,60,0.1);
+  border-color: rgba(251,146,60,0.25);
+  color: #fdba74;
+}
+
+.alert-info {
+  background: rgba(56,189,248,0.08);
+  border-color: rgba(56,189,248,0.2);
+  color: #7dd3fc;
+}
+
+.alert-good {
+  background: rgba(74,222,128,0.08);
+  border-color: rgba(74,222,128,0.2);
+  color: #86efac;
+}
+
 /* ───────── Zip input ───────── */
 .zip-form {
   display: flex;
