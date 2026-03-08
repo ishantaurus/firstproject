@@ -1,0 +1,363 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ───────── Login ───────── */
+#login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.login-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.weather-icon-big {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.login-header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 6px;
+}
+
+.login-header p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56,189,248,0.15);
+}
+
+.error-msg {
+  background: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.btn-login {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-login:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-login:active {
+  transform: translateY(0);
+}
+
+.hint {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.hint strong {
+  color: #94a3b8;
+}
+
+/* ───────── Topbar ───────── */
+.topbar {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-icon {
+  font-size: 1.5rem;
+}
+
+.topbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-badge {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.82rem;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.btn-logout {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-logout:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+/* ───────── Dashboard ───────── */
+.dashboard-main {
+  padding: 28px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Summary cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.summary-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.summary-card .card-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.summary-card .card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.summary-card .card-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.card-accent-blue  { border-top: 3px solid #38bdf8; }
+.card-accent-red   { border-top: 3px solid #f87171; }
+.card-accent-green { border-top: 3px solid #4ade80; }
+.card-accent-purple{ border-top: 3px solid #a78bfa; }
+
+/* Table */
+.table-section {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #334155;
+}
+
+.table-header h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.location-tag {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+#weather-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+#weather-table thead tr {
+  background: #0f172a;
+}
+
+#weather-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+#weather-table tbody tr {
+  border-top: 1px solid #1e293b;
+  transition: background 0.15s;
+}
+
+#weather-table tbody tr:hover {
+  background: #243044;
+}
+
+#weather-table td {
+  padding: 13px 16px;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+#weather-table td.date-col {
+  color: #f1f5f9;
+  font-weight: 500;
+}
+
+.temp-high { color: #f87171; font-weight: 600; }
+.temp-low  { color: #38bdf8; font-weight: 600; }
+
+.condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge-sunny    { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+.badge-cloudy   { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.badge-rainy    { background: rgba(56,189,248,0.15);  color: #38bdf8; }
+.badge-stormy   { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.badge-snowy    { background: rgba(224,242,254,0.15); color: #bae6fd; }
+.badge-windy    { background: rgba(74,222,128,0.15);  color: #4ade80; }
+.badge-foggy    { background: rgba(203,213,225,0.15); color: #cbd5e1; }
+
+.humidity-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.humidity-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #38bdf8, #6366f1);
+  min-width: 4px;
+}
+
+.humidity-val {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  min-width: 30px;
+}
+
+@media (max-width: 600px) {
+  .dashboard-main { padding: 16px; }
+  .topbar { padding: 0 16px; }
+  .topbar-title { display: none; }
+}

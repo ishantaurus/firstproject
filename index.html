@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Login Page -->
+  <div id="login-page" class="page">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="weather-icon-big">&#9925;</div>
+        <h1>Weather Dashboard</h1>
+        <p>Sign in to view weather data</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Enter username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" />
+        </div>
+        <div id="login-error" class="error-msg hidden">Invalid username or password.</div>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+      <p class="hint">Demo credentials: <strong>admin</strong> / <strong>password123</strong></p>
+    </div>
+  </div>
+
+  <!-- Dashboard Page -->
+  <div id="dashboard-page" class="page hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-icon">&#9925;</span>
+        <span class="topbar-title">Weather Dashboard</span>
+      </div>
+      <div class="topbar-right">
+        <span id="logged-in-user" class="user-badge"></span>
+        <button id="logout-btn" class="btn-logout">Logout</button>
+      </div>
+    </header>
+
+    <main class="dashboard-main">
+      <div class="summary-cards" id="summary-cards"></div>
+
+      <div class="table-section">
+        <div class="table-header">
+          <h2>Last 10 Days Weather</h2>
+          <span id="location-label" class="location-tag">New York, US</span>
+        </div>
+        <div class="table-wrapper">
+          <table id="weather-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Day</th>
+                <th>Condition</th>
+                <th>High (°C)</th>
+                <th>Low (°C)</th>
+                <th>Humidity</th>
+                <th>Wind (km/h)</th>
+              </tr>
+            </thead>
+            <tbody id="weather-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
