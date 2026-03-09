@@ -45,6 +45,7 @@
           <input type="text" id="zip-input" placeholder="Zip code" maxlength="10" autocomplete="off" />
           <button id="zip-submit-btn" class="btn-zip">Go</button>
         </div>
+        <button id="unit-toggle-btn" class="btn-unit-toggle" title="Switch temperature unit">°C</button>
         <button id="logout-btn" class="btn-logout">Logout</button>
       </div>
     </header>
@@ -71,8 +72,8 @@
                 <th>Date</th>
                 <th>Day</th>
                 <th>Condition</th>
-                <th>High (°C)</th>
-                <th>Low (°C)</th>
+                <th id="th-high">High (°C)</th>
+                <th id="th-low">Low (°C)</th>
                 <th>Precip. %</th>
                 <th>Wind (mph)</th>
               </tr>

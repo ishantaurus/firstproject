@@ -2,12 +2,23 @@
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 const CREDENTIALS = { admin: 'password123' };
-let currentZip  = '10001';
-let currentCity = 'New York City, NY';
+let currentZip    = '10001';
+let currentCity   = 'New York City, NY';
+let currentUnit   = 'C';          // 'C' or 'F'
+let cachedWeather = null;          // last successful API result
 
 function getSession()      { return sessionStorage.getItem('wdash_user'); }
 function setSession(user)  { sessionStorage.setItem('wdash_user', user); }
 function clearSession()    { sessionStorage.removeItem('wdash_user'); }
+
+// ─── Temperature unit helpers ─────────────────────────────────────────────────
+function toDisplay(celsius) {
+  return currentUnit === 'F' ? Math.round(celsius * 9 / 5 + 32) : celsius;
+}
+
+function unitLabel() {
+  return currentUnit === 'F' ? '°F' : '°C';
+}
 
 // ─── Conditions (mapped from WMO weather codes) ───────────────────────────────
 const CONDITIONS = {
@@ -156,20 +167,9 @@ function showErrorState(msg) {
   `;
 }
 
-// ─── Render dashboard ─────────────────────────────────────────────────────────
-async function renderDashboard(username) {
-  document.getElementById('logged-in-user').textContent = username;
-  showLoadingState();
-
-  let weatherData, city;
-  try {
-    ({ data: weatherData, city } = await fetchWeatherByZip(currentZip));
-    currentCity = city;
-  } catch (err) {
-    showErrorState(err.message);
-    return;
-  }
-
+// ─── Render weather UI (no fetch — uses cached data) ─────────────────────────
+function renderWeatherUI(weatherData) {
+  const ul     = unitLabel();
   const todayData = weatherData[0];
 
   // ── Current temperature hero ──
@@ -178,15 +178,15 @@ async function renderDashboard(username) {
       <div class="cw-left">
         <div class="cw-icon">${todayData.condition.icon}</div>
         <div class="cw-info">
-          <div class="cw-temp">${todayData.current}°C</div>
+          <div class="cw-temp">${toDisplay(todayData.current)}${ul}</div>
           <div class="cw-condition">${todayData.condition.label}</div>
           <div class="cw-location">${currentCity}</div>
         </div>
       </div>
       <div class="cw-right">
-        <div class="cw-detail"><span class="cw-detail-label">High</span><span class="temp-high">${todayData.high}°C</span></div>
-        <div class="cw-detail"><span class="cw-detail-label">Low</span><span class="temp-low">${todayData.low}°C</span></div>
-        <div class="cw-detail"><span class="cw-detail-label">Feels Like</span><span>${todayData.feelsLike}°C</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">High</span><span class="temp-high">${toDisplay(todayData.high)}${ul}</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Low</span><span class="temp-low">${toDisplay(todayData.low)}${ul}</span></div>
+        <div class="cw-detail"><span class="cw-detail-label">Feels Like</span><span>${toDisplay(todayData.feelsLike)}${ul}</span></div>
         <div class="cw-detail"><span class="cw-detail-label">Wind</span><span>${todayData.wind} mph</span></div>
       </div>
     </div>
@@ -195,18 +195,18 @@ async function renderDashboard(username) {
   // ── Summary cards ──
   const highs   = weatherData.map(d => d.high);
   const lows    = weatherData.map(d => d.low);
-  const avgHigh = Math.round(highs.reduce((a, b) => a + b, 0) / highs.length);
-  const avgLow  = Math.round(lows.reduce((a, b) => a + b, 0)  / lows.length);
-  const maxTemp = Math.max(...highs);
-  const minTemp = Math.min(...lows);
+  const avgHigh = toDisplay(Math.round(highs.reduce((a, b) => a + b, 0) / highs.length));
+  const avgLow  = toDisplay(Math.round(lows.reduce((a, b) => a + b, 0)  / lows.length));
+  const maxTemp = toDisplay(Math.max(...highs));
+  const minTemp = toDisplay(Math.min(...lows));
 
   document.getElementById('location-label').textContent = currentCity;
 
   document.getElementById('summary-cards').innerHTML = [
-    { label: 'Avg High',  value: `${avgHigh}°C`, sub: 'Next 10 days', accent: 'card-accent-red'    },
-    { label: 'Avg Low',   value: `${avgLow}°C`,  sub: 'Next 10 days', accent: 'card-accent-blue'   },
-    { label: 'Peak Temp', value: `${maxTemp}°C`, sub: '10-day high',  accent: 'card-accent-purple'  },
-    { label: 'Min Temp',  value: `${minTemp}°C`, sub: '10-day low',   accent: 'card-accent-green'   },
+    { label: 'Avg High',  value: `${avgHigh}${ul}`, sub: 'Next 10 days', accent: 'card-accent-red'    },
+    { label: 'Avg Low',   value: `${avgLow}${ul}`,  sub: 'Next 10 days', accent: 'card-accent-blue'   },
+    { label: 'Peak Temp', value: `${maxTemp}${ul}`, sub: '10-day high',  accent: 'card-accent-purple'  },
+    { label: 'Min Temp',  value: `${minTemp}${ul}`, sub: '10-day low',   accent: 'card-accent-green'   },
   ].map(c => `
     <div class="summary-card ${c.accent}">
       <div class="card-label">${c.label}</div>
@@ -216,8 +216,8 @@ async function renderDashboard(username) {
   `).join('');
 
   // ── Weather alerts ──
-  const alerts   = generateAlerts(weatherData);
-  const alertsEl = document.getElementById('weather-alerts');
+  const alerts    = generateAlerts(weatherData);
+  const alertsEl  = document.getElementById('weather-alerts');
   const alertRows = alerts.length
     ? alerts.map(a => `
         <div class="alert-item ${a.cls}">
@@ -234,6 +234,10 @@ async function renderDashboard(username) {
       ${alertRows}
     </div>`;
 
+  // ── Table headers ──
+  document.getElementById('th-high').textContent = `High (${ul})`;
+  document.getElementById('th-low').textContent  = `Low (${ul})`;
+
   // ── Table rows ──
   document.getElementById('weather-tbody').innerHTML = weatherData.map(d => {
     const barWidth = Math.round((d.precip / 100) * 80);
@@ -246,8 +250,8 @@ async function renderDashboard(username) {
             ${d.condition.icon} ${d.condition.label}
           </span>
         </td>
-        <td class="temp-high">${d.high}°C</td>
-        <td class="temp-low">${d.low}°C</td>
+        <td class="temp-high">${toDisplay(d.high)}${ul}</td>
+        <td class="temp-low">${toDisplay(d.low)}${ul}</td>
         <td>
           <div class="humidity-bar-wrap">
             <div class="humidity-bar" style="width:${barWidth}px"></div>
@@ -257,6 +261,21 @@ async function renderDashboard(username) {
         <td>${d.wind} mph</td>
       </tr>`;
   }).join('');
+}
+
+// ─── Render dashboard (fetch + render) ───────────────────────────────────────
+async function renderDashboard(username) {
+  document.getElementById('logged-in-user').textContent = username;
+  showLoadingState();
+
+  try {
+    const result = await fetchWeatherByZip(currentZip);
+    cachedWeather = result;
+    currentCity   = result.city;
+    renderWeatherUI(result.data);
+  } catch (err) {
+    showErrorState(err.message);
+  }
 }
 
 // ─── Page switching ───────────────────────────────────────────────────────────
@@ -289,6 +308,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       errorEl.classList.remove('hidden');
     }
+  });
+
+  // Unit toggle
+  document.getElementById('unit-toggle-btn').addEventListener('click', () => {
+    currentUnit = currentUnit === 'C' ? 'F' : 'C';
+    document.getElementById('unit-toggle-btn').textContent = currentUnit === 'C' ? '°C' : '°F';
+    if (cachedWeather) renderWeatherUI(cachedWeather.data);
   });
 
   // Zip code

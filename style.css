@@ -193,6 +193,24 @@ body {
   color: #f1f5f9;
 }
 
+.btn-unit-toggle {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  color: #38bdf8;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.btn-unit-toggle:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
 /* ───────── Dashboard ───────── */
 .dashboard-main {
   padding: 28px 32px;
